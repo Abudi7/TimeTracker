@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { pool } from "../db";
 import { AuthedRequest } from "../middleware/authMiddleware";
-
+import { RowDataPacket } from "mysql2";
 const router = Router();
 
 router.post("/start", async (req: AuthedRequest, res) => {
@@ -56,5 +56,46 @@ router.get("/today", async (req: AuthedRequest, res) => {
 
   return res.json({ total_seconds, running });
 });
+// إجمالي الوقت مجمّع حسب اليوم (آخر 60 يومًا افتراضياً)
+router.get("/history", async (req: AuthedRequest, res) => {
+  const userId = req.user!.id;
+  const limitDays = Math.min(parseInt((req.query.days as string) || "60", 10), 365);
 
+  const [rows] = await pool.query<RowDataPacket[]>(
+    `
+    SELECT
+      DATE(start_at) AS day,
+      COALESCE(SUM(TIMESTAMPDIFF(SECOND, start_at, IFNULL(end_at, NOW()))), 0) AS total_seconds
+    FROM time_entries
+    WHERE user_id = ? AND start_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+    GROUP BY DATE(start_at)
+    ORDER BY day DESC
+    `,
+    [userId, limitDays]
+  );
+
+  // نرجع شكل مناسب للواجهة
+  const history = rows.map(r => ({
+    day: r.day,                 // '2025-08-18'
+    total_seconds: Number(r.total_seconds)
+  }));
+
+  return res.json({ history });
+});
+
+// (اختياري) إدخالات مفصلة (آخر 100 إدخال)
+router.get("/entries", async (req: AuthedRequest, res) => {
+  const userId = req.user!.id;
+  const [rows] = await pool.query<RowDataPacket[]>(
+    `
+    SELECT id, start_at, end_at
+    FROM time_entries
+    WHERE user_id = ?
+    ORDER BY start_at DESC
+    LIMIT 100
+    `,
+    [userId]
+  );
+  return res.json({ entries: rows });
+});
 export default router;
