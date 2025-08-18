@@ -2,10 +2,12 @@ import { useEffect, useState } from "react";
 import { setAuthToken } from "./api";
 import LoginRegister from "./pages/LoginRegister";
 import TimeTracker from "./components/TimeTracker";
+import Home from "./pages/Home";
 import { motion } from "framer-motion";
 
 export default function App() {
   const [loggedIn, setLoggedIn] = useState<boolean>(!!localStorage.getItem("token"));
+  const [showTracker, setShowTracker] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -15,6 +17,7 @@ export default function App() {
   const logout = () => {
     setAuthToken(null);
     setLoggedIn(false);
+    setShowTracker(false);
   };
 
   return (
@@ -34,10 +37,12 @@ export default function App() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          {loggedIn ? (
+          {!loggedIn ? (
+            <LoginRegister onLoggedIn={() => setLoggedIn(true)} />
+          ) : showTracker ? (
             <TimeTracker />
           ) : (
-            <LoginRegister onLoggedIn={() => setLoggedIn(true)} />
+            <Home onGoTrack={() => setShowTracker(true)} />
           )}
         </motion.div>
       </div>
