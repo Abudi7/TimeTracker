@@ -10,7 +10,6 @@ import Header from "./components/Header";
 import { motion } from "framer-motion";
 import type { Lang } from "./i18n";
 import toast from "react-hot-toast";
-import Profile from "./pages/Profile"; // لو لسه ما استخدمته، يمكنك إزالته
 
 type Me = {
   email: string;
