@@ -1,31 +1,24 @@
 // src/api.ts
-// Axios instance + token helpers + interceptors (401 auto-logout + toast)
-
 import axios from "axios";
-import toast from "react-hot-toast";
 
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:4000",
+  baseURL: import.meta.env.VITE_API_URL ?? "http://localhost:4000",
+  withCredentials: false, // لأنك تستخدم Bearer وليس Cookies
 });
 
-export function setAuthToken(token: string | null) {
-  if (token) {
-    api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-    localStorage.setItem("token", token);
-  } else {
-    delete api.defaults.headers.common["Authorization"];
-    localStorage.removeItem("token");
-  }
+// عند تحميل الملف (قبل أي ريندر) لو فيه توكن مسبق، احقه في الهيدر
+const bootToken = localStorage.getItem("token");
+if (bootToken) {
+  api.defaults.headers.common["Authorization"] = `Bearer ${bootToken}`;
 }
 
-api.interceptors.response.use(
-  (res) => res,
-  (err) => {
-    const status = err?.response?.status;
-    if (status === 401) {
-      setAuthToken(null);
-      toast.error("Session expired. Please log in again.");
-    }
-    return Promise.reject(err);
+// دالة موحّدة لتعيين/إزالة التوكن على نفس الإنستانس
+export function setAuthToken(token: string | null) {
+  if (token) {
+    localStorage.setItem("token", token);
+    api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+  } else {
+    localStorage.removeItem("token");
+    delete api.defaults.headers.common["Authorization"];
   }
-);
+}

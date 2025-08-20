@@ -1,100 +1,116 @@
-// src/App.tsx
-// App shell: fetch server logo, pass to Header, simple view switching
-
-import { useEffect, useState, useMemo } from "react";
-import { api, setAuthToken } from "./api";
+// App shell with language dropdown, login/home/tracker/reports switching + admin-guard
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { setAuthToken, api } from "./api";
 import LoginRegister from "./pages/LoginRegister";
 import TimeTracker from "./components/TimeTracker";
 import Home from "./pages/Home";
 import Reports from "./pages/Reports";
-import Header from "./components/Header";
 import AdminLogo from "./pages/AdminLogo";
+import Header from "./components/Header";
 import { motion } from "framer-motion";
 import type { Lang } from "./i18n";
+import toast from "react-hot-toast";
+import Profile from "./pages/Profile"; // لو لسه ما استخدمته، يمكنك إزالته
 
-// ---- helper: make absolute URL if server returns a relative path ----
-function toAbsoluteUrl(u?: string | null) {
-  if (!u) return "";
-  if (/^https?:\/\//i.test(u)) return u;
-  const base = ((api as any)?.defaults?.baseURL as string) || "http://localhost:4000";
-  return `${base}${u.startsWith("/") ? u : `/${u}`}`;
-}
-// ---- main App component ----
-// This is the main entry point of the React app, handling routing and state management
+type Me = {
+  email: string;
+  full_name: string;
+  avatar_path: string | null;
+  role?: string; // "admin" | "user"
+};
+
 export default function App() {
   const [loggedIn, setLoggedIn] = useState<boolean>(!!localStorage.getItem("token"));
+
+  // تبويبات العرض (بدون Router)
   const [showTracker, setShowTracker] = useState(false);
   const [showReports, setShowReports] = useState(false);
   const [showAdminLogo, setShowAdminLogo] = useState(false);
 
+  // لغة الواجهة
   const [lang, setLang] = useState<Lang>((localStorage.getItem("lang") as Lang) || "en");
 
-  // شعار التطبيق (يأتي من السيرفر أو من localStorage عند الرفع)
-  const [serverLogo, setServerLogo] = useState<string | null>(null);
-  const [localLogo, setLocalLogo] = useState<string | null>(localStorage.getItem("app_logo"));
+  // شعار الواجهة (يتم تحديثه عند إطلاق حدث app_logo_changed)
+  const [logoUrl, setLogoUrl] = useState<string>(localStorage.getItem("app_logo") || "/logo.png");
 
-  // اجلب التوكن (إن وُجد) عند أول تحميل
+  // بيانات المستخدم (للحراسة على صفحات الأدمن)
+  const [me, setMe] = useState<Me | null>(null);
+  const isAdmin = useMemo(() => me?.role === "admin", [me?.role]);
+
+  // جهّز التوكن إن وُجد عند الإقلاع
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (token) setAuthToken(token);
   }, []);
 
-  // اجلب اللوجو من السيرفر
+  // اجلب بياناتي عند الدخول
   useEffect(() => {
-    (async () => {
-      try {
-        const res = await api.get("/admin/logo"); // يجب أن يرجّع { logoUrl: "/uploads/..." أو "http://..." }
-        const url = res?.data?.logoUrl as string | undefined;
-        if (url) setServerLogo(toAbsoluteUrl(url));
-      } catch (e) {
-        console.warn("[App] failed to fetch server logo:", e);
+    async function fetchMe() {
+      if (!loggedIn) {
+        setMe(null);
+        return;
       }
-    })();
-  }, []);
+      try {
+        const res = await api.get<Me>("/user/me");
+        setMe(res.data);
+      } catch {
+        // إن فشل الطلب (401 مثلاً) نعتبره خروج
+        setMe(null);
+      }
+    }
+    fetchMe();
+  }, [loggedIn]);
 
-  // استمع لأي تغيير على app_logo (بعد الرفع من صفحة AdminLogo)
-  useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === "app_logo") setLocalLogo(e.newValue);
-    };
-    const onCustom = () => setLocalLogo(localStorage.getItem("app_logo"));
-    window.addEventListener("storage", onStorage);
-    window.addEventListener("app_logo_changed", onCustom);
-    return () => {
-      window.removeEventListener("storage", onStorage);
-      window.removeEventListener("app_logo_changed", onCustom);
-    };
-  }, []);
-
-  // حدّد اللوجو النهائي: (محلي بعد الرفع) ← (سيرفر) ← (افتراضي)
-  const finalLogo = useMemo(() => {
-    if (localLogo && localLogo.trim()) return toAbsoluteUrl(localLogo);
-    if (serverLogo && serverLogo.trim()) return serverLogo;
-    return toAbsoluteUrl("/public/logo.png");
-  }, [localLogo, serverLogo]);
-
-  const logout = () => {
-    setAuthToken(null);
-    setLoggedIn(false);
+  // دالة ترجيع للواجهة الرئيسية (تغلق أي تبويب داخلي)
+  const goHome = useCallback(() => {
     setShowTracker(false);
     setShowReports(false);
     setShowAdminLogo(false);
-  };
+    // لا حاجة لإعادة توجيه Router لأننا نتحكم بالحالة داخليًا
+  }, []);
 
-  const onChangeLang = (v: Lang) => {
+  // الاستماع لتغيير الشعار: حدّث اللوغو وارجع للواجهة
+  useEffect(() => {
+    const onLogoChanged = () => {
+      const updated = localStorage.getItem("app_logo") || "/logo.png";
+      setLogoUrl(updated);
+      goHome(); // رجوع تلقائي للواجهة
+    };
+    window.addEventListener("app_logo_changed", onLogoChanged);
+    return () => window.removeEventListener("app_logo_changed", onLogoChanged);
+  }, [goHome]);
+
+  // تسجيل الخروج
+  const logout = useCallback(() => {
+    setAuthToken(null);
+    setLoggedIn(false);
+    setMe(null);
+    goHome();
+  }, [goHome]);
+
+  // تغيير اللغة
+  const onChangeLang = useCallback((v: Lang) => {
     setLang(v);
     localStorage.setItem("lang", v);
-  };
+  }, []);
+
+  // حارس فتح صفحة الشعار (Admin فقط)
+  const openAdminLogoGuarded = useCallback(() => {
+    if (!isAdmin) {
+      toast.error("Only admins can access Brand Logo settings.");
+      return;
+    }
+    setShowAdminLogo(true);
+  }, [isAdmin]);
 
   return (
     <div className="min-vh-100 bg-light d-flex flex-column">
-      {/* Header */}
       <Header
         lang={lang}
         onChangeLang={onChangeLang}
         loggedIn={loggedIn}
         onLogout={logout}
-        logoUrl={finalLogo} // 👈 نمرّر اللوجو النهائي
+        logoUrl={logoUrl}
       />
 
       {/* Body */}
@@ -102,7 +118,7 @@ export default function App() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
           {!loggedIn ? (
             <LoginRegister onLoggedIn={() => setLoggedIn(true)} />
-          ) : showAdminLogo ? (
+          ) : showAdminLogo && isAdmin ? (
             <AdminLogo />
           ) : showReports ? (
             <Reports lang={lang} onBack={() => setShowReports(false)} />
@@ -113,16 +129,16 @@ export default function App() {
               lang={lang}
               onGoTrack={() => setShowTracker(true)}
               onGoReports={() => setShowReports(true)}
-              onGoAdminLogo={() => setShowAdminLogo(true)}
+              canManageBrand={isAdmin}             // لا نعرض زر Admin إلا للأدمن
+              onGoAdminLogo={openAdminLogoGuarded} // مع حارس
             />
           )}
         </motion.div>
       </div>
 
-      {/* Footer */}
       <footer className="py-4 bg-white border-top">
         <div className="container text-center text-muted small">
-          Built with React + Bootstrap + Framer Motion
+          Time Tracker App © {new Date().getFullYear()} | {"All rights reserved."}
         </div>
       </footer>
     </div>

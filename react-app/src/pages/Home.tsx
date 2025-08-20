@@ -1,16 +1,20 @@
-// src/pages/Home.tsx
-// 3D gradient header + CTA buttons (Track / Reports / Admin Logo) with i18n
+// 3D gradient header + CTA buttons (Track / Reports) with i18n + admin button guard
 import { motion } from "framer-motion";
 import { type Lang, t } from "../i18n";
 
-type HomeProps = {
+export default function Home({
+  onGoTrack,
+  onGoReports,
+  onGoAdminLogo,
+  canManageBrand,
+  lang,
+}: {
   onGoTrack: () => void;
   onGoReports: () => void;
-  onGoAdminLogo: () => void; // 👈 أضفناها كـ prop
+  onGoAdminLogo: () => void;
+  canManageBrand: boolean;
   lang: Lang;
-};
-
-export default function Home({ onGoTrack, onGoReports, onGoAdminLogo, lang }: HomeProps) {
+}) {
   return (
     <motion.div
       className="text-center py-5"
@@ -52,17 +56,19 @@ export default function Home({ onGoTrack, onGoReports, onGoAdminLogo, lang }: Ho
           whileTap={{ scale: 0.98 }}
           onClick={onGoReports}
         >
-          {t(lang, "goReports") /* أو "Go to Reports 📊" لو ما عندك ترجمة */} 📊
+          Go to Reports 📊
         </motion.button>
 
-        <motion.button
-          className="btn btn-warning btn-lg rounded-pill px-4"
-          whileHover={{ y: -2 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={onGoAdminLogo} // 👈 نستخدم الـ prop مباشرة
-        >
-          🖼️ Admin Logo
-        </motion.button>
+        {canManageBrand && (
+          <motion.button
+            className="btn btn-warning btn-lg rounded-pill px-4"
+            whileHover={{ y: -2 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={onGoAdminLogo}
+          >
+            🖼️ Admin Logo
+          </motion.button>
+        )}
       </div>
 
       <style>{`

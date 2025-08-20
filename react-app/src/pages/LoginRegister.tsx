@@ -1,3 +1,4 @@
+// src/pages/LoginRegister.tsx
 import { useEffect, useMemo, useState } from "react";
 import { api, setAuthToken } from "../api";
 import { motion, AnimatePresence } from "framer-motion";
@@ -5,7 +6,6 @@ import { GoogleLogin } from "@react-oauth/google";
 import ThemeToggle from "../components/ThemeToggle";
 
 /* ===================== Helpers: validation & animations ===================== */
-
 const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
 
 function validateEmail(v: string) {
@@ -13,13 +13,11 @@ function validateEmail(v: string) {
   if (!emailRegex.test(v)) return "Please enter a valid email address";
   return null;
 }
-
 function validateFullName(v: string) {
   if (!v) return "Full name is required";
   if (v.trim().length < 3) return "Full name must be at least 3 characters";
   return null;
 }
-
 function validatePassword(v: string) {
   if (!v) return "Password is required";
   if (v.length < 6) return "Password must be at least 6 characters";
@@ -34,7 +32,6 @@ const fadeSlide = {
 };
 
 /* ============================== Component =================================== */
-
 export default function LoginRegister({ onLoggedIn }: { onLoggedIn: () => void }) {
   const [tab, setTab] = useState<"login" | "register">("login");
 
@@ -108,24 +105,31 @@ export default function LoginRegister({ onLoggedIn }: { onLoggedIn: () => void }
     }
   }
 
-  async function onGoogleCredential(credential: string | undefined) {
+  async function onGoogleCredential(credential?: string) {
+    resetAlerts();
     if (!credential) {
-      setErr("Google login failed. No credential received.");
+      setErr("Google login failed: no credential");
       return;
     }
-    resetAlerts();
     try {
       setSocialLoading(true);
       const res = await api.post("/auth/google", { idToken: credential });
       setAuthToken(res.data.token);
       setOk("Logged in with Google ✅");
       setTimeout(() => onLoggedIn(), 400);
-    } catch (error: any) {
-      setErr(error?.response?.data?.message || "Google login failed");
+    } catch (e: any) {
+      const m = e?.response?.data?.message || e?.message || "Google login failed";
+      // لو واجهت FedCM من جديد
+      if (/fedcm|third-?party|token/i.test(String(m))) {
+        setErr("Google login blocked by browser. Disable blockers or try Incognito.");
+      } else {
+        setErr(m);
+      }
     } finally {
       setSocialLoading(false);
     }
   }
+  
 
   return (
     <div
@@ -162,15 +166,16 @@ export default function LoginRegister({ onLoggedIn }: { onLoggedIn: () => void }
                     <h5 className="m-0 fw-bold">TimeTracker</h5>
                   </div>
 
-                  <div className="btn-group btn-group-sm">
+                  {/* Tabs modern (pills) */}
+                  <div className="tabs-pill">
                     <button
-                      className={`btn ${tab === "login" ? "btn-primary" : "btn-outline-primary"}`}
+                      className={`pill ${tab === "login" ? "active" : ""}`}
                       onClick={() => setTab("login")}
                     >
                       Login
                     </button>
                     <button
-                      className={`btn ${tab === "register" ? "btn-primary" : "btn-outline-primary"}`}
+                      className={`pill ${tab === "register" ? "active" : ""}`}
                       onClick={() => setTab("register")}
                     >
                       Register
@@ -178,7 +183,7 @@ export default function LoginRegister({ onLoggedIn }: { onLoggedIn: () => void }
                   </div>
                 </div>
                 <div className="px-1 pt-2 pb-3 text-muted small">
-                  Welcome back! Track your time smarter.
+                  Welcome! Track your time smarter.
                 </div>
               </div>
 
@@ -208,7 +213,7 @@ export default function LoginRegister({ onLoggedIn }: { onLoggedIn: () => void }
                       {/* email */}
                       <div className="mb-3">
                         <label className="form-label">Email</label>
-                        <div className="input-group input-group-lg">
+                        <div className="input-group input-group-lg modern-input">
                           <span className="input-group-text">
                             <i className="bi bi-envelope" />
                           </span>
@@ -228,7 +233,7 @@ export default function LoginRegister({ onLoggedIn }: { onLoggedIn: () => void }
                       {/* password */}
                       <div className="mb-4">
                         <label className="form-label">Password</label>
-                        <div className="input-group input-group-lg">
+                        <div className="input-group input-group-lg modern-input">
                           <span className="input-group-text">
                             <i className="bi bi-shield-lock" />
                           </span>
@@ -292,7 +297,6 @@ export default function LoginRegister({ onLoggedIn }: { onLoggedIn: () => void }
                         <GoogleLogin
                           onSuccess={(cred) => onGoogleCredential(cred.credential)}
                           onError={() => setErr("Google login failed")}
-                          useOneTap
                           theme="outline"
                           shape="pill"
                           size="large"
@@ -312,7 +316,7 @@ export default function LoginRegister({ onLoggedIn }: { onLoggedIn: () => void }
                       {/* full name */}
                       <div className="mb-3">
                         <label className="form-label">Full Name</label>
-                        <div className="input-group input-group-lg">
+                        <div className="input-group input-group-lg modern-input">
                           <span className="input-group-text">
                             <i className="bi bi-person" />
                           </span>
@@ -331,7 +335,7 @@ export default function LoginRegister({ onLoggedIn }: { onLoggedIn: () => void }
                       {/* email */}
                       <div className="mb-3">
                         <label className="form-label">Email</label>
-                        <div className="input-group input-group-lg">
+                        <div className="input-group input-group-lg modern-input">
                           <span className="input-group-text">
                             <i className="bi bi-envelope" />
                           </span>
@@ -351,7 +355,7 @@ export default function LoginRegister({ onLoggedIn }: { onLoggedIn: () => void }
                       {/* password */}
                       <div className="mb-4">
                         <label className="form-label">Password</label>
-                        <div className="input-group input-group-lg">
+                        <div className="input-group input-group-lg modern-input">
                           <span className="input-group-text">
                             <i className="bi bi-shield-lock" />
                           </span>
@@ -376,9 +380,10 @@ export default function LoginRegister({ onLoggedIn }: { onLoggedIn: () => void }
                         {touched.password && passError && <div className="invalid-feedback d-block">{passError}</div>}
                       </div>
 
+                      {/* ✅ زر التسجيل بنفس ستايل زر الدخول (تدرّج أزرق) */}
                       <motion.button
                         type="submit"
-                        className="btn btn-success w-100 btn-lg rounded-3 mb-3"
+                        className="btn btn-gradient w-100 btn-lg rounded-3 mb-3"
                         disabled={loading}
                         whileTap={{ scale: 0.98 }}
                         whileHover={{ y: -1 }}
@@ -391,7 +396,7 @@ export default function LoginRegister({ onLoggedIn }: { onLoggedIn: () => void }
                         ) : (
                           <>
                             <i className="bi bi-person-plus me-2" />
-                            Register
+                            Create account
                           </>
                         )}
                       </motion.button>
@@ -403,7 +408,7 @@ export default function LoginRegister({ onLoggedIn }: { onLoggedIn: () => void }
                         <div className="flex-grow-1 border-top" />
                       </div>
 
-                      {/* Google sign-up (same endpoint) */}
+                      {/* Google sign-up */}
                       <div className={`d-flex justify-content-center ${socialLoading ? "opacity-75 pe-none" : ""}`}>
                         <GoogleLogin
                           onSuccess={(cred) => onGoogleCredential(cred.credential)}
@@ -436,23 +441,65 @@ export default function LoginRegister({ onLoggedIn }: { onLoggedIn: () => void }
           --bg-bubble1: rgba(0, 212, 255, .22);
           --bg-bubble2: rgba(122, 92, 255, .22);
           --glass-bg: rgba(255, 255, 255, 0.86);
+          --gradient-1: linear-gradient(135deg, #00d4ff, #7a5cff);
+          --gradient-2: linear-gradient(135deg, #7a5cff, #4facfe);
+          --ring: 0 0 0 0.35rem rgba(0, 212, 255, .20);
         }
         [data-bs-theme="dark"] {
           --bg-bubble1: rgba(0, 212, 255, .12);
           --bg-bubble2: rgba(122, 92, 255, .12);
           --glass-bg: rgba(18, 18, 22, 0.65);
+          --ring: 0 0 0 0.35rem rgba(0, 212, 255, .12);
         }
         .auth-glass { background: var(--glass-bg); }
         .shadow-xl { box-shadow: 0 22px 70px rgba(0,0,0,.12); }
+
         .brand-badge {
           width: 38px; height: 38px;
           border-radius: 12px;
-          background: linear-gradient(135deg, #00d4ff, #7a5cff);
+          background: var(--gradient-1);
           color: #fff; font-size: 18px;
           box-shadow: 0 8px 24px rgba(122,92,255,.35);
         }
+
+        .tabs-pill {
+          display: inline-flex;
+          padding: 4px;
+          background: rgba(0,0,0,.06);
+          border-radius: 999px;
+          gap: 4px;
+        }
+        [data-bs-theme="dark"] .tabs-pill { background: rgba(255,255,255,.06); }
+        .tabs-pill .pill {
+          border: 0;
+          padding: 8px 16px;
+          border-radius: 999px;
+          background: transparent;
+          font-weight: 600;
+          transition: transform .15s ease;
+        }
+        .tabs-pill .pill:hover { transform: translateY(-1px); }
+        .tabs-pill .pill.active {
+          color: #fff;
+          background: var(--gradient-2);
+          box-shadow: 0 8px 24px rgba(122,92,255,.35);
+        }
+
+        .modern-input .form-control {
+          border: 1px solid rgba(0,0,0,.08);
+        }
+        [data-bs-theme="dark"] .modern-input .form-control {
+          border-color: rgba(255,255,255,.12);
+          background-color: rgba(255,255,255,.04);
+          color: #fff;
+        }
+        .modern-input .form-control:focus {
+          box-shadow: var(--ring);
+          border-color: transparent;
+        }
+
         .btn-gradient {
-          background: linear-gradient(135deg, #00d4ff, #7a5cff);
+          background: var(--gradient-1);
           border: none; color: #fff;
           box-shadow: 0 10px 24px rgba(122,92,255,.35);
         }

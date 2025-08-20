@@ -13,11 +13,23 @@ import projectsRoutes from "./routes/projects.routes";
 import tagsRoutes from "./routes/tags.routes";
 import adminRoutes from "./routes/admin.routes";
 import { authMiddleware } from "./middleware/authMiddleware";
-
+import profileRoutes from "./routes/profile.routes";
+import userRoutes from "./routes/user.routes";
+// استيراد dotenv لتحميل المتغيرات البيئية
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 4000;
+const allowedOrigins = (process.env.FRONTEND_ORIGINS ||
+  "http://localhost:5173,http://127.0.0.1:5173"
+).split(",");
+// إعدادات CORS
+app.use(cors({
+  origin: process.env.FRONTEND_ORIGIN || "http://localhost:5173",
+  credentials: true,
+  allowedHeaders: ["Content-Type", "Authorization"], // ← مهم
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+}));
 
 // ===== Middlewares
 app.use(morgan("dev"));
@@ -30,13 +42,29 @@ app.use(
 );
 app.use(
   helmet({
-    crossOriginResourcePolicy: { policy: "cross-origin" }, // للسماح بتحميل الصور من /uploads
-    crossOriginEmbedderPolicy: false,
+   // اسمح للبوب-أب أن تتفاعل مع نافذة الأصل (مطلوب لـ Google OAuth popup)
+   crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
+
+   // أثناء التطوير، أوقف COEP لأنه يكسر postMessage أيضاً
+   crossOriginEmbedderPolicy: false,
+   // (اختياري) سياسات أخرى كما تحب:
+    // contentSecurityPolicy: false,
+    // referrerPolicy: { policy: "no-referrer" },
   })
 );
 
+//Uploads profile images
+app.use("/profile", profileRoutes);
+// User routes for profile management
+app.use("/user", authMiddleware, userRoutes);
 // ===== Static files (قبل الراوتس)
 const publicDir = path.join(process.cwd(), "public");
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    crossOriginEmbedderPolicy: false,
+  })
+);
 app.use("/uploads", express.static(path.join(publicDir, "uploads")));
 app.use(express.static(publicDir));
 

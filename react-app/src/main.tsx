@@ -13,39 +13,25 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { ThemeProvider } from "./theme";
 import { LogoProvider } from "./context/LogoContext";
+import { BrowserRouter } from "react-router-dom";
 
 const queryClient = new QueryClient();
 
-// Ensure we have a trimmed client id
-const GOOGLE_ID = (import.meta.env.VITE_GOOGLE_CLIENT_ID || "").trim();
-
-// Debug logs
-console.log("VITE_GOOGLE_CLIENT_ID =", GOOGLE_ID || "(missing)");
-
-if (!GOOGLE_ID) {
-  console.error(
-    "Google Client ID is missing! Add VITE_GOOGLE_CLIENT_ID to .env.local and restart: npm run dev"
-  );
-}
+console.log("VITE_GOOGLE_CLIENT_ID =", import.meta.env.VITE_GOOGLE_CLIENT_ID);
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <GoogleOAuthProvider clientId={GOOGLE_ID}>
-        <ThemeProvider>
-          <LogoProvider>
-            <App />
-            <Toaster position="top-center" />
-          </LogoProvider>
-        </ThemeProvider>
-      </GoogleOAuthProvider>
-    </QueryClientProvider>
+    <BrowserRouter>
+      <QueryClientProvider client={queryClient}>
+        <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID as string}>
+          <ThemeProvider>
+            <LogoProvider>
+              <App />
+              <Toaster position="top-center" />
+            </LogoProvider>
+          </ThemeProvider>
+        </GoogleOAuthProvider>
+      </QueryClientProvider>
+    </BrowserRouter>
   </React.StrictMode>
 );
-
-console.log("React app started successfully");
-if (import.meta.env.DEV) {
-  console.log("Development mode: Hot module replacement is enabled.");
-} else {
-  console.log("Production mode: Hot module replacement is disabled.");
-}
