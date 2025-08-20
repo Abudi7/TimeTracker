@@ -1,50 +1,47 @@
+import { useEffect, useMemo, useState } from "react";
 import type { Lang } from "../i18n";
 import { t } from "../i18n";
-import { useEffect, useMemo, useState } from "react";
+import { api } from "../api";
 
 type HeaderProps = {
   lang: Lang;
   onChangeLang: (v: Lang) => void;
   loggedIn: boolean;
   onLogout: () => void;
-  logoUrl?: string;
+  logoUrl?: string; // ✅ اختياري
 };
 
-export default function Header({
-  lang,
-  onChangeLang,
-  loggedIn,
-  onLogout,
-  logoUrl,
-}: HeaderProps) {
+function toAbsolute(u?: string | null) {
+  if (!u) return "";
+  if (/^https?:\/\//i.test(u)) return u;
+  const base = ((api as any)?.defaults?.baseURL as string) || "http://localhost:4000";
+  return `${base}${u.startsWith("/") ? u : `/${u}`}`;
+}
+
+export default function Header({ lang, onChangeLang, loggedIn, onLogout, logoUrl }: HeaderProps) {
   const [storedLogo, setStoredLogo] = useState<string | null>(null);
 
-  // عند التحميل + لو تغيّر اللوجو من AdminLogo
+  // التقط أي تغيير من صفحة الرفع
   useEffect(() => {
-    const loadLogo = () => {
-      const v = localStorage.getItem("app_logo");
-      setStoredLogo(v || null);
-    };
-    loadLogo();
-    window.addEventListener("app_logo_changed", loadLogo);
-    return () => window.removeEventListener("app_logo_changed", loadLogo);
+    const load = () => setStoredLogo(localStorage.getItem("app_logo"));
+    load();
+    window.addEventListener("app_logo_changed", load);
+    return () => window.removeEventListener("app_logo_changed", load);
   }, []);
 
-  // حدد المصدر النهائي
   const finalLogo = useMemo(() => {
-    if (storedLogo && storedLogo.trim()) return storedLogo; // من localStorage
-    if (logoUrl && logoUrl.trim()) return logoUrl; // من props
-    return "/uploads/logo-default.png"; // ← ضع لوجو افتراضي بداخل public/uploads
+    if (storedLogo && storedLogo.trim()) return toAbsolute(storedLogo);
+    if (logoUrl && logoUrl.trim())     return toAbsolute(logoUrl);
+    // 👇 افتراضي أكيد موجود لمنع 404
+    return toAbsolute("/public/logo.png");
   }, [storedLogo, logoUrl]);
 
-  const [imgSrc, setImgSrc] = useState<string>(finalLogo);
+  const [imgSrc, setImgSrc] = useState(finalLogo);
   useEffect(() => setImgSrc(finalLogo), [finalLogo]);
 
   const handleError = () => {
-    if (imgSrc !== "/uploads/logo-default.png") {
-      console.warn("Logo failed to load, fallback used");
-      setImgSrc("/uploads/logo-default.png");
-    }
+    const fallback = toAbsolute("/uploads/logo-default.png");
+    if (imgSrc !== fallback) setImgSrc(fallback);
   };
 
   return (
@@ -58,7 +55,7 @@ export default function Header({
             style={{ objectFit: "contain", borderRadius: 6 }}
             onError={handleError}
           />
-          <span>⏱️ {t(lang, "appTitle")}</span>
+       <span>{t(lang, "appTitle")}</span>
         </a>
 
         <div className="ms-auto d-flex align-items-center gap-2">

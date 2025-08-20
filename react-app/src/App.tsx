@@ -19,7 +19,8 @@ function toAbsoluteUrl(u?: string | null) {
   const base = ((api as any)?.defaults?.baseURL as string) || "http://localhost:4000";
   return `${base}${u.startsWith("/") ? u : `/${u}`}`;
 }
-
+// ---- main App component ----
+// This is the main entry point of the React app, handling routing and state management
 export default function App() {
   const [loggedIn, setLoggedIn] = useState<boolean>(!!localStorage.getItem("token"));
   const [showTracker, setShowTracker] = useState(false);
@@ -69,7 +70,7 @@ export default function App() {
   const finalLogo = useMemo(() => {
     if (localLogo && localLogo.trim()) return toAbsoluteUrl(localLogo);
     if (serverLogo && serverLogo.trim()) return serverLogo;
-    return toAbsoluteUrl("/logo.png");
+    return toAbsoluteUrl("/public/logo.png");
   }, [localLogo, serverLogo]);
 
   const logout = () => {
